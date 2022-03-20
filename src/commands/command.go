@@ -42,5 +42,5 @@ func HandleCommand(producer *kafka.Writer, ctx *gin.Context) {
 		server.SendDefaultErr(ctx, http.StatusInternalServerError)
 		return
 	}
-	fmt.Println("Successfully sent event", eventType)
+	fmt.Println("Successfully sent event", *eventType)
 }

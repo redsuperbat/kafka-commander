@@ -1,11 +1,13 @@
 package auth
 
 import (
+	"crypto/rsa"
 	"fmt"
 	"log"
 	"net/http"
 	"strings"
 
+	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt"
 	"github.com/redsuperbat/kafka-commander/src/server"
 )
@@ -16,10 +18,14 @@ type User struct {
 
 const bearer = "Bearer "
 
-func NewJwtValidator(pubKey string) func(string) (*User, *server.ResponseError) {
-	return func(tokenString string) (*User, *server.ResponseError) {
+func NewJwtMiddleware(pubKey *rsa.PublicKey) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		tokenString := c.Request.Header.Get("Authorization")
+
 		if tokenString == "" {
-			return nil, server.NewRespErr(http.StatusUnauthorized)
+			server.SendDefaultErr(c, http.StatusUnauthorized)
+			c.Abort()
+			return
 		}
 
 		if strings.HasPrefix(tokenString, bearer) {
@@ -35,24 +41,23 @@ func NewJwtValidator(pubKey string) func(string) (*User, *server.ResponseError) 
 
 		if err != nil {
 			log.Println(err.Error())
-			return nil, server.NewRespErr(http.StatusUnauthorized)
+			server.SendDefaultErr(c, http.StatusUnauthorized)
+			c.Abort()
+			return
 		}
 
 		if !token.Valid {
 			log.Println("Invalid token tried accessing the API")
-			return nil, server.NewRespErr(http.StatusUnauthorized)
 		}
 
 		claims, ok := token.Claims.(jwt.MapClaims)
 		if !ok {
-			return nil, server.NewRespErr(http.StatusUnauthorized)
+			server.SendDefaultErr(c, http.StatusUnauthorized)
+			c.Abort()
+			return
 		}
 
-		username, uOk := claims["username"].(string)
-		if !uOk {
-			return nil, server.NewRespErr(http.StatusUnauthorized)
-		}
-
-		return &User{Username: username}, nil
+		c.Set("claims", claims)
+		c.Next()
 	}
 }

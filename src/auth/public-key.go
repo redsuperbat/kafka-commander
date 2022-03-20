@@ -1,16 +1,17 @@
 package auth
 
 import (
+	"crypto/rsa"
 	"io"
 	"log"
 	"net/http"
 	"os"
-	"strings"
 
+	"github.com/golang-jwt/jwt"
 	"github.com/redsuperbat/kafka-commander/src/options"
 )
 
-func GetPubKey() string {
+func GetPubKey() *rsa.PublicKey {
 
 	key := os.Getenv("JWT_PUB_KEY")
 	args := options.GetArgs()
@@ -20,7 +21,11 @@ func GetPubKey() string {
 	}
 
 	if key != "" {
-		return key
+		pubKey, err := jwt.ParseRSAPublicKeyFromPEM([]byte(key))
+		if err != nil {
+			log.Fatalln("Invalid RSA public key", err.Error())
+		}
+		return pubKey
 	}
 
 	resp, err := http.Get(args.PubKeyUrl)
@@ -33,10 +38,10 @@ func GetPubKey() string {
 		log.Fatalln("Unable to read response body", err.Error())
 	}
 
-	stringifiedBody := string(body)
-	if !strings.HasPrefix(stringifiedBody, "-----BEGIN RSA PUBLIC KEY-----") {
-		log.Fatalln("Invalid public key in response body", stringifiedBody)
+	pubKey, err := jwt.ParseRSAPublicKeyFromPEM(body)
+	if err != nil {
+		log.Fatalln("Invalid public key in response body", err.Error())
 	}
 
-	return stringifiedBody
+	return pubKey
 }
