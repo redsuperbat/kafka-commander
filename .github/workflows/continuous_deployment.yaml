@@ -33,4 +33,6 @@ jobs:
         with:
           context: .
           push: true
-          tags: maxrsb/kafka-commander:${{ steps.sha.outputs.short }}
+          tags: 
+            - maxrsb/kafka-commander:${{ steps.sha.outputs.short }}
+            - maxrsb/kafka-commander:latest
