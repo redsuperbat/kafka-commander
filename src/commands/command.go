@@ -2,9 +2,10 @@ package commands
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/redsuperbat/kafka-commander/src/server"
@@ -13,21 +14,30 @@ import (
 
 type Command map[string]interface{}
 
-func (c Command) CheckValidity() (*string, *server.ResponseError) {
+func (c Command) Valid() *server.ResponseError {
 	value, ok := c["eventType"].(string)
-	if ok {
-		return &value, nil
+	if !ok {
+		return server.NewRespErr(http.StatusBadRequest, "Invalid command, field eventType must be a string")
 	}
-	return nil, server.NewRespErr(http.StatusBadRequest, "Invalid command, field eventType is required.")
+	if value == "" {
+		return server.NewRespErr(http.StatusBadRequest, "Invalid command, field eventType is required")
+	}
+	if !strings.HasSuffix(value, "Event") {
+		return server.NewRespErr(http.StatusBadRequest, "Invalid command, field eventType requires suffix 'Event'")
+	}
+	return nil
+}
+
+func (c Command) EventType() string {
+	return c["eventType"].(string)
 }
 
 func HandleCommand(producer *kafka.Writer, ctx *gin.Context) {
 	jsonData, _ := ioutil.ReadAll(ctx.Request.Body)
 	var body Command
 	json.Unmarshal(jsonData, &body)
-	eventType, validityErr := body.CheckValidity()
 
-	if validityErr != nil {
+	if validityErr := body.Valid(); validityErr != nil {
 		ctx.JSON(validityErr.Code, validityErr.Message)
 		return
 	}
@@ -38,9 +48,9 @@ func HandleCommand(producer *kafka.Writer, ctx *gin.Context) {
 
 	err := producer.WriteMessages(ctx.Request.Context(), msg)
 	if err != nil {
-		fmt.Println(err.Error())
+		log.Println(err.Error())
 		server.SendDefaultErr(ctx, http.StatusInternalServerError)
 		return
 	}
-	fmt.Println("Successfully sent event", *eventType)
+	log.Println("Successfully commanded", body.EventType())
 }
