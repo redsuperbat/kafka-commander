@@ -1,5 +1,7 @@
 FROM golang:alpine3.14 as compiler
 
+RUN apk add git
+
 WORKDIR /app/build
 
 COPY . .
