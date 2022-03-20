@@ -2,35 +2,35 @@ package main
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/gin-gonic/gin"
-	"github.com/redsuperbat/kafka-commander/src/auth"
 	"github.com/redsuperbat/kafka-commander/src/commands"
 	"github.com/redsuperbat/kafka-commander/src/options"
 	"github.com/redsuperbat/kafka-commander/src/producing"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
 func main() {
-	log.Println("Starting kafka-commander...")
 	args := options.GetArgs()
-	log.Println("Parsed args.")
+	zerolog.SetGlobalLevel(args.LogLevel)
+	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 
-	log.Println("Getting pubkey...")
-	pubKey := auth.GetPubKey()
-	log.Println("Successfully got public key")
-	jwtMiddleware := auth.NewJwtMiddleware(pubKey)
+	log.Info().Msg("Getting pubkey...")
+	// pubKey := auth.GetPubKey()
+	log.Info().Msg("Successfully got public key")
+	// jwtMiddleware := auth.NewJwtMiddleware(pubKey)
 
-	producer := producing.NewKafkaWriter(args.KafkaBroker, args.KafkaTopic)
-	defer producer.Close()
+	writeMessage, close := producing.NewConn()
+	defer close()
 
 	router := gin.Default()
-	router.Use(jwtMiddleware)
+	// router.Use(jwtMiddleware)
 
-	log.Println("Mapping", args.CommandPath, "to handle the commands")
+	log.Info().Msgf("Mapping %s to handle the commands", args.CommandPath)
 	router.POST(args.CommandPath, func(ctx *gin.Context) {
-		commands.HandleCommand(producer, ctx)
+		commands.HandleCommand(writeMessage, ctx)
 	})
-	log.Println("Server starting on port", args.ServerPort)
+	log.Info().Msgf("Server starting on port %v", args.ServerPort)
 	router.Run(":" + fmt.Sprint(args.ServerPort))
 }

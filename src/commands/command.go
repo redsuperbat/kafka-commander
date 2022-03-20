@@ -9,7 +9,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/redsuperbat/kafka-commander/src/server"
-	"github.com/segmentio/kafka-go"
 )
 
 type Command map[string]interface{}
@@ -32,25 +31,23 @@ func (c Command) EventType() string {
 	return c["eventType"].(string)
 }
 
-func HandleCommand(producer *kafka.Writer, ctx *gin.Context) {
+func HandleCommand(writeMessageFunc func([]byte) error, ctx *gin.Context) {
 	jsonData, _ := ioutil.ReadAll(ctx.Request.Body)
 	var body Command
 	json.Unmarshal(jsonData, &body)
 
 	if validityErr := body.Valid(); validityErr != nil {
-		ctx.JSON(validityErr.Code, validityErr.Message)
+		ctx.JSON(validityErr.Code, validityErr)
 		return
 	}
 
-	msg := kafka.Message{
-		Value: jsonData,
-	}
+	err := writeMessageFunc(jsonData)
 
-	err := producer.WriteMessages(ctx.Request.Context(), msg)
 	if err != nil {
-		log.Println(err.Error())
+		log.Println("Error occurred when writing to kafka", err.Error())
 		server.SendDefaultErr(ctx, http.StatusInternalServerError)
 		return
 	}
+
 	log.Println("Successfully commanded", body.EventType())
 }

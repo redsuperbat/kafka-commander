@@ -1,17 +1,28 @@
 package producing
 
 import (
-	"time"
+	"context"
+	"log"
 
+	"github.com/redsuperbat/kafka-commander/src/options"
 	"github.com/segmentio/kafka-go"
 )
 
-func NewKafkaWriter(kafkaURL, topic string) *kafka.Writer {
-	return &kafka.Writer{
-		Addr:         kafka.TCP(kafkaURL),
-		Topic:        topic,
-		RequiredAcks: kafka.RequireAll,
-		Balancer:     &kafka.LeastBytes{},
-		BatchTimeout: 10 * time.Millisecond,
+func NewConn() (func(value []byte) error, func() error) {
+	args := options.GetArgs()
+	log.Println("Connecting to broker", args.KafkaBroker, "...")
+	conn, err := kafka.DialLeader(context.Background(), "tcp", args.KafkaBroker, args.KafkaTopic, 0)
+	log.Println("Connection successful!")
+	if err != nil {
+		log.Fatalln("failed to dial leader:", err.Error())
 	}
+
+	return func(value []byte) error {
+		msg := kafka.Message{Value: value}
+		if _, err := conn.WriteMessages(msg); err != nil {
+			return err
+		}
+		return nil
+	}, conn.Close
+
 }

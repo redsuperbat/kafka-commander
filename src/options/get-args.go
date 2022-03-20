@@ -2,7 +2,10 @@ package options
 
 import (
 	"flag"
-	"log"
+	"os"
+
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
 type KafkaCommanderArgs struct {
@@ -11,34 +14,71 @@ type KafkaCommanderArgs struct {
 	KafkaBroker string
 	ServerPort  int
 	CommandPath string
+	LogLevel    zerolog.Level
 }
 
 var args *KafkaCommanderArgs
 
+var flagSet flag.FlagSet = flag.FlagSet{}
+
+func mapStringToLogLevel(level string) zerolog.Level {
+	switch level {
+	case "debug":
+		return zerolog.DebugLevel
+	case "info":
+		return zerolog.InfoLevel
+	case "warn":
+		return zerolog.WarnLevel
+	case "error":
+		return zerolog.ErrorLevel
+	case "fatal":
+		return zerolog.FatalLevel
+	case "panic":
+		return zerolog.FatalLevel
+	case "no":
+		return zerolog.NoLevel
+	case "disable":
+		return zerolog.Disabled
+	case "trace":
+		return zerolog.Disabled
+	default:
+		log.Fatal().Msg("Unknown loglevel " + level)
+		return 0
+	}
+}
+
 func parseArgs() {
-	KafkaBroker := flag.String("broker", "localhost:9092", "url to kafka broker")
-	KafkaTopic := flag.String("topic", "", "topic to produce messages to")
-	PubKeyUrl := flag.String("pub-key-url", "", "url to dynamically fetch jwt RSA public key")
-	ServerPort := flag.Int("port", 8887, "port for api")
-	CommandPath := flag.String("path", "/", "path for commands")
-	flag.Parse()
+	KafkaBroker := flagSet.String("broker", "localhost:9092", "url to kafka broker")
+	KafkaTopic := flagSet.String("topic", "", "topic to produce messages to")
+	PubKeyUrl := flagSet.String("pub-key-url", "", "url to dynamically fetch jwt RSA public key")
+	ServerPort := flagSet.Int("port", 8887, "port for api")
+	CommandPath := flagSet.String("path", "/", "path for commands")
+	LogLevelString := flagSet.String("log-level", "debug", "level of log printed to the console")
+
+	err := flagSet.Parse(os.Args[1:])
+
+	if err != nil {
+		os.Exit(0)
+	}
+
+	LogLevel := mapStringToLogLevel(*LogLevelString)
+
 	args = &KafkaCommanderArgs{
 		KafkaBroker: *KafkaBroker,
 		KafkaTopic:  *KafkaTopic,
 		PubKeyUrl:   *PubKeyUrl,
 		ServerPort:  *ServerPort,
 		CommandPath: *CommandPath,
+		LogLevel:    LogLevel,
 	}
 	if args.KafkaTopic == "" {
-		log.Fatalln("No topic specified for kafka-commander. Please supply a topic eg. --topic test-topic ")
+		log.Fatal().Msg("No topic specified for kafka-commander. Please supply a topic eg. --topic test-topic ")
 	}
 
 }
 
 func GetArgs() *KafkaCommanderArgs {
-	log.Println("Getting args...")
-	if args == nil {
-		log.Println("Args not cached, parsing them...")
+	if !flagSet.Parsed() {
 		parseArgs()
 	}
 	return args
