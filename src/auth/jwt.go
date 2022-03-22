@@ -28,7 +28,7 @@ func NewJwtMiddleware(pubKey *rsa.PublicKey) gin.HandlerFunc {
 			tokenString = tokenString[len(bearer):]
 		}
 		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-			// Don't forget to validate the alg is what you expect:
+			// Validate the alg is what you expect:
 			if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
 				return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
 			}
@@ -44,6 +44,8 @@ func NewJwtMiddleware(pubKey *rsa.PublicKey) gin.HandlerFunc {
 
 		if !token.Valid {
 			log.Info().Msg("Invalid token tried accessing the API")
+			c.Abort()
+			return
 		}
 
 		claims, ok := token.Claims.(jwt.MapClaims)
