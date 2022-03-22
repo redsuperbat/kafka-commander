@@ -21,32 +21,6 @@ var args *KafkaCommanderArgs
 
 var flagSet flag.FlagSet = flag.FlagSet{}
 
-func mapStringToLogLevel(level string) zerolog.Level {
-	switch level {
-	case "debug":
-		return zerolog.DebugLevel
-	case "info":
-		return zerolog.InfoLevel
-	case "warn":
-		return zerolog.WarnLevel
-	case "error":
-		return zerolog.ErrorLevel
-	case "fatal":
-		return zerolog.FatalLevel
-	case "panic":
-		return zerolog.FatalLevel
-	case "no":
-		return zerolog.NoLevel
-	case "disable":
-		return zerolog.Disabled
-	case "trace":
-		return zerolog.Disabled
-	default:
-		log.Fatal().Msg("Unknown loglevel " + level)
-		return 0
-	}
-}
-
 func parseArgs() {
 	KafkaBroker := flagSet.String("broker", "localhost:9092", "url to kafka broker")
 	KafkaTopic := flagSet.String("topic", "", "topic to produce messages to")
