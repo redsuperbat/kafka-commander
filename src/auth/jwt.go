@@ -3,18 +3,14 @@ package auth
 import (
 	"crypto/rsa"
 	"fmt"
-	"log"
 	"net/http"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt"
 	"github.com/redsuperbat/kafka-commander/src/server"
+	"github.com/rs/zerolog/log"
 )
-
-type User struct {
-	Username string
-}
 
 const bearer = "Bearer "
 
@@ -40,14 +36,14 @@ func NewJwtMiddleware(pubKey *rsa.PublicKey) gin.HandlerFunc {
 		})
 
 		if err != nil {
-			log.Println(err.Error())
+			log.Info().Msg(err.Error())
 			server.SendDefaultErr(c, http.StatusUnauthorized)
 			c.Abort()
 			return
 		}
 
 		if !token.Valid {
-			log.Println("Invalid token tried accessing the API")
+			log.Info().Msg("Invalid token tried accessing the API")
 		}
 
 		claims, ok := token.Claims.(jwt.MapClaims)

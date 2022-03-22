@@ -3,12 +3,12 @@ package commands
 import (
 	"encoding/json"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/redsuperbat/kafka-commander/src/server"
+	"github.com/rs/zerolog/log"
 )
 
 type Command map[string]interface{}
@@ -44,10 +44,10 @@ func HandleCommand(writeMessageFunc func([]byte) error, ctx *gin.Context) {
 	err := writeMessageFunc(jsonData)
 
 	if err != nil {
-		log.Println("Error occurred when writing to kafka", err.Error())
+		log.Info().Msgf("Error occurred when writing to kafka %s", err.Error())
 		server.SendDefaultErr(ctx, http.StatusInternalServerError)
 		return
 	}
 
-	log.Println("Successfully commanded", body.EventType())
+	log.Info().Msgf("Successfully commanded %s", body.EventType())
 }

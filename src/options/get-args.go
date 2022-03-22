@@ -61,7 +61,11 @@ func parseArgs() {
 		os.Exit(0)
 	}
 
-	LogLevel := mapStringToLogLevel(*LogLevelString)
+	level, err := zerolog.ParseLevel(*LogLevelString)
+
+	if err != nil {
+		log.Fatal().Msg(err.Error())
+	}
 
 	args = &KafkaCommanderArgs{
 		KafkaBroker: *KafkaBroker,
@@ -69,7 +73,7 @@ func parseArgs() {
 		PubKeyUrl:   *PubKeyUrl,
 		ServerPort:  *ServerPort,
 		CommandPath: *CommandPath,
-		LogLevel:    LogLevel,
+		LogLevel:    level,
 	}
 	if args.KafkaTopic == "" {
 		log.Fatal().Msg("No topic specified for kafka-commander. Please supply a topic eg. --topic test-topic ")
