@@ -2,6 +2,7 @@ package producing
 
 import (
 	"context"
+	"math"
 	"os"
 	"time"
 
@@ -12,7 +13,17 @@ import (
 const (
 	KAFKA_BROKER = "KAFKA_BROKER"
 	KAFKA_TOPIC  = "KAFKA_TOPIC"
+
+	ceilRetryTime float64 = 25
 )
+
+func getRetryTime(numberOfRetries int64) float64 {
+	if numberOfRetries > 5 {
+		return 25
+	}
+	retryTime := math.Exp(float64(numberOfRetries))
+	return retryTime * 100
+}
 
 func NewConn() (func(value []byte) error, func() error) {
 	kafkaBroker := os.Getenv(KAFKA_BROKER)
@@ -27,18 +38,16 @@ func NewConn() (func(value []byte) error, func() error) {
 
 	log.Info().Msgf("Connecting to broker %s ...", kafkaBroker)
 	var err error
-	numberOfRetries := 0
+	var numberOfRetries int64 = 0
 	for err == nil {
 
 		conn, err := kafka.DialLeader(context.Background(), "tcp", kafkaBroker, kafkaTopic, 0)
 
 		if err != nil {
-			log.Error().Msgf("failed to dial leader: %s. Retrying in 3 seconds", err.Error())
-			time.Sleep(3 * time.Second)
-			if numberOfRetries > 5 {
-				log.Fatal().Msgf("Failed to dial leader 5 times, exiting")
-			}
 			numberOfRetries += 1
+			retryTime := getRetryTime(numberOfRetries)
+			log.Error().Msgf("failed to dial leader: %s. Retrying in %v seconds", err.Error(), retryTime/1000)
+			time.Sleep(time.Duration(retryTime) * time.Millisecond)
 			continue
 		}
 
