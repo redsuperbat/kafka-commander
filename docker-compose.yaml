@@ -1,5 +1,13 @@
 version: '3.7'
 services:
+  kafka_commander:
+    image: maxrsb/kafka-commander:latest
+    ports:
+      - 8887:887
+    environment:
+      - KAFKA_TOPIC=test-topic
+      - JWT_PUB_KEY="-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAuFeDtjEi0hoWEmfcKFBd\niGSgddpd1Gfwc37saNM5iQH/WrUmfw7T1oMAPJUoqKJAd32BtmOhg9q8+vtPPfFS\nVIIggtbBgeFTNNPOKJMqp+9XNyu9KhpYRyloMhZxhISUwZHY3fYQ+Wx8nVyqbGDr\nWM22ZOZihaflfI26suL8T8JRqsUeyBRTjGwr6IQ7HX9jP0EiHf77dIePiZCqkmMv\nEW0ytWAJhSrWzM7apFoXm80T/7LkoPPIuXHNow4UkdXP25LCZAJ1Zzb+QHQNIQ0y\nevdkMN3G0rZjpBv/X/R2/9CuSKP0giknAje3KRYnh+xH4UtBYpo8w0P8EYyPx65h\nyQIDAQAB\n-----END PUBLIC KEY-----"
+  
   redpanda:
     command:
     - redpanda

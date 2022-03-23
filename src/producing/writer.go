@@ -2,16 +2,30 @@ package producing
 
 import (
 	"context"
+	"os"
 
-	"github.com/redsuperbat/kafka-commander/src/options"
 	"github.com/rs/zerolog/log"
 	"github.com/segmentio/kafka-go"
 )
 
+const (
+	KAFKA_BROKER = "KAFKA_BROKER"
+	KAFKA_TOPIC  = "KAFKA_TOPIC"
+)
+
 func NewConn() (func(value []byte) error, func() error) {
-	args := options.GetArgs()
-	log.Info().Msgf("Connecting to broker %s ...", args.KafkaBroker)
-	conn, err := kafka.DialLeader(context.Background(), "tcp", args.KafkaBroker, args.KafkaTopic, 0)
+	kafkaBroker := os.Getenv(KAFKA_BROKER)
+	if kafkaBroker == "" {
+		kafkaBroker = "localhost:9092"
+	}
+
+	kafkaTopic := os.Getenv(KAFKA_TOPIC)
+	if kafkaTopic == "" {
+		log.Fatal().Msg("A topic must be provided for kafka commander")
+	}
+
+	log.Info().Msgf("Connecting to broker %s ...", kafkaBroker)
+	conn, err := kafka.DialLeader(context.Background(), "tcp", kafkaBroker, kafkaTopic, 0)
 
 	if err != nil {
 		log.Fatal().Msgf("failed to dial leader: %s", err.Error())

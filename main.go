@@ -2,35 +2,60 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/redsuperbat/kafka-commander/src/auth"
 	"github.com/redsuperbat/kafka-commander/src/commands"
-	"github.com/redsuperbat/kafka-commander/src/options"
 	"github.com/redsuperbat/kafka-commander/src/producing"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
 
-func main() {
-	args := options.GetArgs()
-	zerolog.SetGlobalLevel(args.LogLevel)
-	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
+const (
+	LOG_LEVEL    = "LOG_LEVEL"
+	COMMAND_PATH = "COMMAND_PATH"
+	SERVER_PORT  = "SERVER_PORT"
+)
 
+func initializeLogger() {
+	logLevel, err := zerolog.ParseLevel(os.Getenv(LOG_LEVEL))
+	if err != nil {
+		fmt.Println(err.Error())
+		logLevel = zerolog.TraceLevel
+	}
+	zerolog.SetGlobalLevel(logLevel)
+	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
+}
+
+func main() {
+	initializeLogger()
 	log.Info().Msg("Getting pubkey...")
-	// pubKey := auth.GetPubKey()
+	pubKey := auth.GetPubKey()
 	log.Info().Msg("Successfully got public key")
-	// jwtMiddleware := auth.NewJwtMiddleware(pubKey)
+	jwtMiddleware := auth.NewJwtMiddleware(pubKey)
 
 	writeMessage, close := producing.NewConn()
 	defer close()
 
 	router := gin.Default()
-	// router.Use(jwtMiddleware)
+	router.Use(jwtMiddleware)
 
-	log.Info().Msgf("Mapping %s to handle the commands", args.CommandPath)
-	router.POST(args.CommandPath, func(ctx *gin.Context) {
+	commandPath := os.Getenv(COMMAND_PATH)
+	if commandPath == "" {
+		commandPath = "/"
+	}
+	log.Info().Msgf("Mapping %s to handle the commands", commandPath)
+	router.POST(commandPath, func(ctx *gin.Context) {
 		commands.HandleCommand(writeMessage, ctx)
 	})
-	log.Info().Msgf("Server starting on port %v", args.ServerPort)
-	router.Run(":" + fmt.Sprint(args.ServerPort))
+
+	serverPort, err := strconv.Atoi(os.Getenv(SERVER_PORT))
+	if err != nil {
+		serverPort = 8887
+	}
+
+	log.Info().Msgf("Server starting on port %v", serverPort)
+	router.Run(":" + fmt.Sprint(serverPort))
 }
