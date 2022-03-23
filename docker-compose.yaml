@@ -2,12 +2,20 @@ version: '3.7'
 services:
   kafka_commander:
     image: maxrsb/kafka-commander:latest
+    depends_on:
+      - fusionauth
+      - redpanda
     ports:
-      - 8887:887
+      - 8887:8887
     environment:
       - KAFKA_TOPIC=test-topic
-      - JWT_PUB_KEY="-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAuFeDtjEi0hoWEmfcKFBd\niGSgddpd1Gfwc37saNM5iQH/WrUmfw7T1oMAPJUoqKJAd32BtmOhg9q8+vtPPfFS\nVIIggtbBgeFTNNPOKJMqp+9XNyu9KhpYRyloMhZxhISUwZHY3fYQ+Wx8nVyqbGDr\nWM22ZOZihaflfI26suL8T8JRqsUeyBRTjGwr6IQ7HX9jP0EiHf77dIePiZCqkmMv\nEW0ytWAJhSrWzM7apFoXm80T/7LkoPPIuXHNow4UkdXP25LCZAJ1Zzb+QHQNIQ0y\nevdkMN3G0rZjpBv/X/R2/9CuSKP0giknAje3KRYnh+xH4UtBYpo8w0P8EYyPx65h\nyQIDAQAB\n-----END PUBLIC KEY-----"
-  
+      - JWT_PUB_KEY_URL=http://fusionauth:9011/api/jwt/public-key?applicationId=fa6d07a9-1a80-41c5-acdd-3ca786deaa69
+      - LOG_LEVEL=debug
+      - KAFKA_BROKER=redpanda:9092
+    networks:
+      - db
+      - redpanda
+
   redpanda:
     command:
     - redpanda
@@ -25,7 +33,54 @@ services:
     - PLAINTEXT://redpanda:29092,OUTSIDE://localhost:9092
     # NOTE: Please use the latest version here!
     image: docker.vectorized.io/vectorized/redpanda:v21.9.5
-    container_name: redpanda-1
     ports:
     - 9092:9092
     - 29092:29092
+    networks:
+      - redpanda
+
+  db:
+    image: postgres:12.9
+    environment:
+      PGDATA: /var/lib/postgresql/data/pgdata
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    networks:
+      - db
+    restart: unless-stopped
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+  fusionauth:
+    image: fusionauth/fusionauth-app:latest
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: jdbc:postgresql://db:5432/fusionauth
+      DATABASE_ROOT_USERNAME: ${POSTGRES_USER}
+      DATABASE_ROOT_PASSWORD: ${POSTGRES_PASSWORD}
+      DATABASE_USERNAME: ${DATABASE_USERNAME}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+      FUSIONAUTH_APP_MEMORY: ${FUSIONAUTH_APP_MEMORY}
+      FUSIONAUTH_APP_RUNTIME_MODE: development
+      FUSIONAUTH_APP_URL: http://fusionauth:9011
+      SEARCH_TYPE: database
+
+
+    networks:
+     - db
+    restart: unless-stopped
+    ports:
+      - 9011:9011
+    volumes:
+      - fa_config:/usr/local/fusionauth/config
+
+networks:
+  db:
+    driver: bridge
+  redpanda:
+    driver: bridge
+
+volumes:
+  db_data:
+  fa_config:

@@ -20,11 +20,21 @@ const (
 )
 
 func initializeLogger() {
-	logLevel, err := zerolog.ParseLevel(os.Getenv(LOG_LEVEL))
+	inputLogLevel := os.Getenv(LOG_LEVEL)
+	if inputLogLevel == "" {
+		configZerolog(zerolog.DebugLevel)
+		return
+	}
+
+	logLevel, err := zerolog.ParseLevel(inputLogLevel)
 	if err != nil {
-		fmt.Println(err.Error())
+		log.Error().Msg(err.Error())
 		logLevel = zerolog.TraceLevel
 	}
+	configZerolog(logLevel)
+}
+
+func configZerolog(logLevel zerolog.Level) {
 	zerolog.SetGlobalLevel(logLevel)
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 }

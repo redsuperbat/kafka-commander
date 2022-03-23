@@ -3,6 +3,7 @@ package producing
 import (
 	"context"
 	"os"
+	"time"
 
 	"github.com/rs/zerolog/log"
 	"github.com/segmentio/kafka-go"
@@ -25,20 +26,33 @@ func NewConn() (func(value []byte) error, func() error) {
 	}
 
 	log.Info().Msgf("Connecting to broker %s ...", kafkaBroker)
-	conn, err := kafka.DialLeader(context.Background(), "tcp", kafkaBroker, kafkaTopic, 0)
+	var err error
+	numberOfRetries := 0
+	for err == nil {
 
-	if err != nil {
-		log.Fatal().Msgf("failed to dial leader: %s", err.Error())
-	}
+		conn, err := kafka.DialLeader(context.Background(), "tcp", kafkaBroker, kafkaTopic, 0)
 
-	log.Info().Msg("Connection successful!")
-
-	return func(value []byte) error {
-		msg := kafka.Message{Value: value}
-		if _, err := conn.WriteMessages(msg); err != nil {
-			return err
+		if err != nil {
+			log.Error().Msgf("failed to dial leader: %s. Retrying in 3 seconds", err.Error())
+			time.Sleep(3 * time.Second)
+			if numberOfRetries > 5 {
+				log.Fatal().Msgf("Failed to dial leader 5 times, exiting")
+			}
+			numberOfRetries += 1
+			continue
 		}
-		return nil
-	}, conn.Close
 
+		log.Info().Msg("Connection successful!")
+
+		return func(value []byte) error {
+			msg := kafka.Message{Value: value}
+			if _, err := conn.WriteMessages(msg); err != nil {
+				return err
+			}
+			return nil
+		}, conn.Close
+
+	}
+	log.Fatal().Msg("Unable to connect to kafka, please try again..")
+	return nil, nil
 }
