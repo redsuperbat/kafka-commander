@@ -2,6 +2,7 @@ package commands
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -10,6 +11,10 @@ import (
 	"github.com/redsuperbat/kafka-commander/src/server"
 	"github.com/rs/zerolog/log"
 )
+
+var allowedEvents = map[string]bool{
+	"ChatMessageSentEvent": true,
+}
 
 type Command map[string]interface{}
 
@@ -24,6 +29,12 @@ func (c Command) Valid() *server.ResponseError {
 	if !strings.HasSuffix(value, "Event") {
 		return server.NewRespErr(http.StatusBadRequest, "Invalid command, field eventType requires suffix 'Event'")
 	}
+
+	if !allowedEvents[value] {
+		errMsg := fmt.Sprintf("Invalid Command, eventType [%s] is not allowed.", value)
+		return server.NewRespErr(http.StatusBadRequest, errMsg)
+	}
+
 	return nil
 }
 
