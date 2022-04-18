@@ -17,6 +17,7 @@ const (
 	LOG_LEVEL    = "LOG_LEVEL"
 	COMMAND_PATH = "COMMAND_PATH"
 	SERVER_PORT  = "SERVER_PORT"
+	AUTH         = "AUTH"
 )
 
 func initializeLogger() {
@@ -39,18 +40,25 @@ func configZerolog(logLevel zerolog.Level) {
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 }
 
-func main() {
-	initializeLogger()
+func addAuth(engine *gin.Engine) {
 	log.Info().Msg("Getting pubkey...")
 	pubKey := auth.GetPubKey()
 	log.Info().Msg("Successfully got public key")
 	jwtMiddleware := auth.NewJwtMiddleware(pubKey)
+	engine.Use(jwtMiddleware)
+}
+
+func main() {
+	initializeLogger()
 
 	writeMessage, close := producing.NewConn()
 	defer close()
 
 	router := gin.Default()
-	router.Use(jwtMiddleware)
+
+	if os.Getenv(AUTH) == "true" {
+		addAuth(router)
+	}
 
 	commandPath := os.Getenv(COMMAND_PATH)
 	if commandPath == "" {
