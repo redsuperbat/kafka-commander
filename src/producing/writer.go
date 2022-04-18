@@ -14,12 +14,12 @@ const (
 	KAFKA_BROKER = "KAFKA_BROKER"
 	KAFKA_TOPIC  = "KAFKA_TOPIC"
 
-	ceilRetryTime float64 = 25
+	ceilRetryTime float64 = 25_000
 )
 
 func getRetryTime(numberOfRetries int64) float64 {
 	if numberOfRetries > 5 {
-		return 25
+		return ceilRetryTime
 	}
 	retryTime := math.Exp(float64(numberOfRetries))
 	return retryTime * 100
